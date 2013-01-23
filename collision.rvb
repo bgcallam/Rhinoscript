@@ -1,0 +1,58 @@
+'Option Explicit 
+
+'Call collisionCheck()
+
+Sub collisionCheck(arrObjects,ByVal boundingBox, ByVal newObject)
+
+  Dim i
+  
+  'Error Checking
+  If IsNull(arrObjects) Then Exit Sub
+  
+  'Does it intersect with the bounding box?
+  If Not Rhino.SurfaceSurfaceIntersection(newObject, boundingBox,, False) = False Then
+    collisionCheck = True
+  End If
+  
+  'Cycle through objects  
+  For i = 0 To UBound(arrObjects)
+  
+    If IsNull(arrObjects(i)) Then Exit Sub
+  
+    'Does it intersect with objects in the array?
+    If Not Rhino.SurfaceSurfaceIntersection(arrObjects(i), boundingBox,, False) = False Then
+      collisionCheck = True
+    End If
+  Next
+  
+  'Everything Checks out, return false
+  collisionCheck = False
+    
+End Sub
+  
+'Dim strSurfaceA, strSurfaceB, arrSSX, i
+'Const rhObjectSurface = 8
+'strSurfaceA = Rhino.GetObject("Select first surface", rhObjectSurface)
+'If IsNull(strSurfaceA) Or Rhino.IsSurface(strSurfaceA) = False Then Exit Sub  
+'If IsNull(arrObjects) Or Rhino.IsSurface(strSurfaceA) = False Then Exit Sub
+'strSurfaceB = Rhino.GetObject("Select second surface", rhObjectSurface)
+'If IsNull(strSurfaceB) Or Rhino.IsSurface(strSurfaceB) = False Then Exit Sub
+'arrSSX = Rhino.SurfaceSurfaceIntersection(strSurfaceA, strSurfaceB,, False)
+'If Not IsArray(arrSSX) Then
+ ' Rhino.Print "Surfaces do not intersect."
+'Else
+'  Rhino.Print "Surfaces intersect."
+'Exit Sub
+'End If
+
+'For i = 0 To UBound(arrSSX)
+'Select Case arrSSX(i,0)
+'Case 1 Rhino.Print "Transverse surface-surface intersection curve."
+'Case 2 Rhino.Print "Tangent surface-surface intersection curve."
+'Case 3 Rhino.Print "Overlap surface-surface intersection curve."
+'Case 4 Rhino.Print "Transverse surface-surface intersection point."
+'Case 5 Rhino.Print "Tangent surface-surface intersection point."
+'End Select
+'Rhino.SelectObject arrSSX(i,1)
+'Next
+'End Sub

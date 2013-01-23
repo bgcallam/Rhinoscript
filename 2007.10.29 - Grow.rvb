@@ -1,0 +1,93 @@
+Option Explicit
+
+Call Grow()
+
+Sub Grow()
+  'NOTE: This currently (and maybe should
+  Rhino.UnselectAllObjects
+   
+   Dim numObjects : numObjects = 5
+   
+  'Select the seed object"
+  Dim seed : seed = Rhino.GetObject("Select Seed object",8 + 16 + 32)
+  If IsNull(seed) Then Exit Sub
+    
+  'Number of Connection Faces?"
+  Dim intConnections : intConnections = Rhino.GetInteger("Number of Connection Faces?",2)
+  If IsNull(intConnections) Then Exit Sub
+    
+  'Store connection data in the seed object"
+  Dim i
+  For i=0 To intConnections-1
+    Dim center : center = Rhino.GetPoint("Connection Center"&i+1)
+    Dim pt1 : pt1 = Rhino.GetPoint("Pick a point on the same plane")
+    Dim pt2 : pt2 = Rhino.GetPoint("Pick another point on the same plane")
+    
+    Dim zVector : zVector = Rhino.PlaneFromPoints(center,pt1,pt2)
+    Dim zTemp : zTemp = Rhino.VectorUnitize(zVector(3))
+    zTemp = Rhino.VectorScale(zTemp,.5)
+    
+    Rhino.Print "Before "&i&": "& Rhino.Pt2Str(center)
+    Rhino.Print "    : "& Rhino.Pt2Str(pt1)
+    Rhino.Print "    : "& Rhino.Pt2Str(pt2)
+    
+    Dim newCenter : newCenter = Rhino.PointAdd(center, zTemp)
+    Dim newPt1 : newPt1 = Rhino.PointAdd(pt1, zTemp)
+    Dim newPt2 : newPt2 = Rhino.PointAdd(pt2, zTemp)
+    
+    'Dim tempLine : tempLine = Rhino.Addline (center,newCenter)
+    'Call Rhino.CurveArrows(tempLine,2)
+    'Rhino.Addline center,zRev
+    
+
+        
+    Rhino.SetObjectData seed, "Connection_"&i, "center", Rhino.Pt2Str(newCenter)
+    Rhino.SetObjectData seed, "Connection_"&i, "pt1", Rhino.Pt2Str(newPt1)
+    Rhino.SetObjectData seed, "Connection_"&i, "pt2", Rhino.Pt2Str(newPt2)
+
+  Next
+  
+  
+  
+  'Copy and Orient the seed object"
+  'For i=0 To numObjects
+    
+    Dim seedCopy : seedCopy = Rhino.CopyObject(seed)
+    
+    'r -> reference'
+    Dim rCenter : rCenter = Rhino.Str2Pt( Rhino.GetObjectData(seedCopy, "Connection_0",  "center") )
+    Dim rPt1 : rPt1 = Rhino.Str2Pt( Rhino.GetObjectData(seedCopy, "Connection_0",  "pt1") )
+    Dim rPt2 : rPt2 = Rhino.Str2Pt( Rhino.GetObjectData(seedCopy, "Connection_0",  "pt2") )
+    'Dim rZ : rZ = Rhino.Str2Pt( Rhino.GetObjectData(seed, "Connection_0",  "z") )
+    
+    't -> target'
+    Dim tCenter : tCenter = Rhino.Str2Pt( Rhino.GetObjectData(seed, "Connection_1",  "center") )
+    Dim tPt1 : tPt1 = Rhino.Str2Pt( Rhino.GetObjectData(seed, "Connection_1",  "pt1") )
+    Dim tPt2 : tPt2 = Rhino.Str2Pt( Rhino.GetObjectData(seed, "Connection_1",  "pt2") )
+    
+        Rhino.Print "After: "& Rhino.Pt2Str(tCenter)
+        Rhino.Print "    : "& Rhino.Pt2Str(tPt1)
+        Rhino.Print "    : "& Rhino.Pt2Str(tPt2)
+    
+    Rhino.OrientObject seedCopy, Array(rCenter,rPt1,rPt2), Array(tCenter,tPt1,tPt2)
+    
+    If Collision (seed, seedCopy) = True Then
+      'Rhino.OrientObject seedCopy, Array(rCenter,rPt1,rPt2), Array(tCenter,tPt1,tPt2)
+      'Rhino.DeleteObject seedCopy
+    End If
+  'Next
+  
+End Sub
+
+Function Collision(obj1, obj2)
+    Dim intersect : intersect = Rhino.IntersectBreps (obj1, obj2)
+    If IsArray(intersect) Then
+      Rhino.Print "Objects Intersected"
+      Rhino.DeleteObjects intersect
+      Collision = True
+    Else
+      Rhino.Print "No Intersection"
+      Collision = False
+    End If
+  
+End Function

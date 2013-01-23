@@ -1,0 +1,92 @@
+  Option Explicit
+
+ Call Surface2Laser()
+ 
+  Sub Surface2Laser()
+
+
+    ' Get the surface object'
+    Dim srf : srf = Rhino.GetObject("Select surface", 8, vbTrue)
+    If IsNull(srf) Then Exit Sub
+
+
+    ' Get the number of rows'
+    Dim rows : rows = Rhino.GetInteger("Number of rows", 2, 2)
+    If IsNull(rows) Then Exit Sub
+    rows = rows - 1
+
+
+    ' Get the number of columns'
+    Dim cols : cols = Rhino.GetInteger("Number of columns", 2, 2)
+    If IsNull(cols) Then Exit Sub
+    cols = cols - 1
+
+
+    ' Get the domain of the surface'
+    Dim U : U = Rhino.SurfaceDomain(srf, 0)
+    Dim V : V = Rhino.SurfaceDomain(srf, 1)
+    If Not IsArray(U) Or Not IsArray(V) Then Exit Sub
+
+    Dim extrudeDistance : extrudeDistance = Array(0,0,2)
+
+    ' Turn off redrawing (faster)'
+    Rhino.EnableRedraw vbFalse
+
+	'the array of points'
+	  Dim rowCurves : rowCurves = Array(rows)
+		Dim colCurves : colCurves = Array(cols)
+	
+   ' Add Rows'
+    Dim i, t(1), p(1), pt1, pt2, crv, pt1Ext
+    For i = 0 To rows
+      t(0) = U(0) + (((U(1) - U(0)) / rows) * i)
+      t(1) = V(0)
+      p(0) = t(0)
+      p(1) = V(1)
+      
+
+            pt1 = Rhino.EvaluateSurface (srf, p)
+            pt2 = Rhino.EvaluateSurface (srf, t)
+            crv = Rhino.AddInterpCrvOnSrf (srf, Array(pt1,pt2))
+            pt1Ext = Rhino.PointAdd(pt1, extrudeDistance)
+            Rhino.ExtrudeCurveStraight crv, pt1, pt1Ext
+            Rhino.Print crv
+            If Not crv = Null Then
+              Rhino.SelectObject(crv)    'Select the curve
+            Else
+              Rhino.Print "Curve not created"
+            End If
+    Next
+
+	
+	'Draw cols'
+'	 Dim j, tt(1), pp(1), colpt1, colpt2, crv2, colpt1Ext
+'   For j = 0 To cols
+'      tt(0) = V(0) + (((V(1) - V(0)) / cols) * j)
+'      tt(1) = U(0)
+'      pp(0) = tt(0)
+'      pp(1) = U(1)
+'      
+'      'For j = 0 To cols
+'      '  t(1) = V(0) + (((V(1) - V(0)) / cols) * j)
+'            colpt1 = Rhino.EvaluateSurface (srf, pp)
+'            colpt2 = Rhino.EvaluateSurface (srf, tt)
+'            '000000000000000
+'            crv2 = Rhino.AddInterpCrvOnSrf (srf, Array(colpt1,colpt2))
+'            colpt1Ext = Rhino.PointAdd(colpt1, extrudeDistance)
+'            Rhino.ExtrudeCurveStraight crv2, colpt1, colpt1Ext
+'            Rhino.Print crv2
+'            If Not crv2 = Null Then
+'              Rhino.SelectObject(crv2)    'Select the curve
+'            Else
+'              Rhino.Print "Curve not created"
+'            End If
+      'Next
+'    Next
+
+
+    ' Turn on redrawing'
+    Rhino.EnableRedraw vbTrue
+
+
+  End Sub

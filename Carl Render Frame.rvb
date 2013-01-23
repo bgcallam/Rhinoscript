@@ -1,0 +1,44 @@
+Option Explicit
+
+partwhole1()
+Sub partwhole1()
+Dim arrRect(3)
+Dim strCurRect
+Dim heightGuide
+Dim strCurBlock
+Dim newX
+Dim newY
+Dim newZ
+Dim intcounter
+Dim intframecounter
+Dim density
+
+intframecounter=0
+
+Do While intframecounter<55
+  intcounter=0
+  heightGuide=Rhino.Addline(Array(0,0,0), Array(0,0,1))
+  intframecounter=intframecounter+1
+  
+  Do While intcounter<(intframecounter*12)
+    intcounter=intcounter+1
+    density=1+(intframecounter/14)
+    newX=Rnd()*density*Rnd()*density*Rnd()*density
+    newY=Rnd()*density*Rnd()*density*Rnd()*density
+    newZ=Rnd()*density*Rnd()*density*Rnd()*density
+    arrRect(0)=Array(0,0,0)
+    arrRect(1)=Array(0,2,0)
+    arrRect(2)=Array(1,2,0)
+    arrRect(3)=Array(1,0,0)
+    strCurRect=Rhino.AddSrfPt(arrRect)
+    strCurBlock=Rhino.ExtrudeSurface(strCurRect, heightGuide)
+    Call Rhino.MoveObject(strCurBlock, Array(0,0,0), Array(newX,newY,newZ))
+    Call Rhino.SurfaceIsocurveDensity(strCurBlock, -1)
+  Loop
+  'Rhino.Command("render")
+  'Call Rhino.sleep(3000)
+  'Call Rhino.Command("_-SaveRenderWindowAs"&" d" & "_" & CStr(intframecounter)& ".jpg")
+  'Rhino.Command("all")
+  'Rhino.Command("delete")
+  Loop
+  End Sub

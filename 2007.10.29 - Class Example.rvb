@@ -1,0 +1,38 @@
+Dim objUser
+Set objUser = New Seed
+
+' set the UserName property
+objUser.UserName = "The Guru"
+
+' call the DisplayUserName method
+' to print the user name
+objUser.DisplayUserName
+
+
+
+
+Class Seed
+
+   Private Sub Class_Initialize
+      ' Statements go here.
+   End Sub
+   
+' declare private class variable
+Private m_userName
+
+' declare the property
+Public Property Get UserName
+  UserName = m_userName
+End Property
+
+Public Property Let UserName (strUserName)
+  m_userName = strUserName
+End Property
+
+' declare and define the method
+Sub DisplayUserName
+  Rhino.Print UserName
+End Sub
+
+End Class
+

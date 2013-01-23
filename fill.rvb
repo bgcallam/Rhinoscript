@@ -1,0 +1,99 @@
+﻿Option Explicit 
+
+Call fill()
+
+Sub fill()
+  
+  Dim seedSurface, boundingBox, newSurface, mvpt, i
+  '8 is surface objects
+  Const rhObjectSurface = 8
+  
+  boundingBox = Rhino.GetObject("Select boundingBox", rhObjectSurface)
+  If IsNull(boundingBox) Or Rhino.IsSurface(boundingBox) = False Then Exit Sub
+  
+  'ReDim Preserve arrSurfaces(1)
+  seedSurface = Rhino.GetObject("Select filler", rhObjectSurface) 
+  If IsNull(seedSurface) Or Rhino.IsSurface(seedSurface) = False Then Exit Sub
+  
+  For i = 0 To 20
+    Call PlaceSurface(16, seedSurface, boundingBox)
+  Next
+
+End Sub
+
+'RECURSIVELY place objects until they are all placed
+Function PlaceSurface(ByVal num2Place, startingObject, boundingBox)
+  Dim newSurface, cntr, min, max, x, y, z
+  min = 1
+  max = 50
+  
+  'If we have more to place
+  If num2Place > 1 Then
+    'find original obj's center
+    cntr = Rhino.SurfaceAreaCentroid(startingObject)
+    x = RandomNumber(min,max)
+    y = RandomNumber(min,max)
+    z = RandomNumber(min,max)
+    newSurface = Rhino.CopyObject(startingObject,cntr(0), Array(cntr(0)(0)+x,cntr(0)(1)+y,cntr(0)(2)+z))
+  
+  'CreateSurface = newSurface
+    If collisionCheck( boundingBox, newSurface) = False Then
+      Call PlaceSurface(num2Place-1, newSurface, boundingBox)
+    Else
+      Rhino.DeleteObject(newSurface)
+      Call PlaceSurface( num2Place, startingObject, boundingBox)
+    End If
+  End If
+End Function
+
+Function RandomNumber(nMin, nMax)
+      RandomNumber = Null
+      If Not IsNumeric(nMin) Then Exit Function
+      If Not IsNumeric(nMax) Then Exit Function
+      If nMin >= nMax Then Exit Function
+      Randomize
+      RandomNumber = Int((nMax - nMin + 1) * Rnd + nMin)
+End Function
+
+'Call collisionCheck(
+Function CollisionCheck( boundingBox, newSurface)
+
+  Dim i, return, arrSurfaces
+  
+  return = False 'If this changes, there was a collision
+  
+  
+  Rhino.Command "_SelSrf Enter"
+  arrSurfaces = Rhino.SelectedObjects()
+  Rhino.UnselectObjects (arrSurfaces)
+  
+  'Error Checking
+  If Not IsArray(arrSurfaces)Then Exit Function
+  If IsNull(arrSurfaces) Then Exit Function
+  
+  'Does it intersect with the bounding box? (works only with untrimmed surfaces)
+  If IsArray(Rhino.SurfaceSurfaceIntersection(newSurface, boundingBox,, False)) Then
+  '**If IsArray(Rhino.BooleanIntersection (newSurface, boundingBox, False)) Then
+    'Rhino.Print "Collision detected"
+    return = True
+  End If
+  
+  'Cycle through objects  
+  For i = 0 To (UBound(arrSurfaces)-1)
+  
+    If IsNull(arrSurfaces(i)) Then Exit Function
+    'Don't compare it to itself
+    If Not arrSurfaces(i) = newSurface Then
+      'Does it intersect with objects in the array?
+      If IsArray( Rhino.SurfaceSurfaceIntersection(arrSurfaces(i), newSurface,, False)) Then
+      'If IsArray(Rhino.BooleanIntersection (arrSurfaces(i), newSurface, False)) Then
+        'Rhino.Print "Collision detected"
+        return = True
+      End If
+    End If
+  Next
+  
+  'return our findings (actually objects can nest...I think, so not really)
+  CollisionCheck = return
+    
+End Function

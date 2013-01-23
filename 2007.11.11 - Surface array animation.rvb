@@ -1,0 +1,142 @@
+﻿'Author: Ben Callam
+'Date: 11/15/2007
+'Liscense: Creative Commons
+
+Option Explicit
+
+Call SurfaceAnimate(True)
+
+Function SurfaceAnimate(renderFlag)
+  
+    Rhino.UnselectAllObjects
+ 
+    'Get the curves to loft
+    Dim arrCurves
+    arrCurves = Rhino.GetObjects("Pick curves to loft", 4 )
+    
+    Rhino.UnselectAllObjects
+
+    ' Select object to array
+    Dim strObjID  
+    strObjID = Rhino.GetObject("Select an Object", 4+8+16, True, True) 
+    If IsNull(strObjID) Then Exit Function
+
+    ' Select Base point
+    Dim arrBasePt  
+    arrBasePt = Rhino.GetPoint("Pick a base point for the Object") 
+    If IsNull(arrBasePt) Then Exit Function  
+
+    ' Select Normal End point
+    Dim arrEndPt  
+    arrEndPt = Rhino.GetPoint("Pick a point to define the object's orientation") 
+    If IsNull(arrEndPt) Then Exit Function
+      
+    
+    ' ########################
+    '       The Meat
+    ' ########################
+    Dim frame, maxFrames, rotateIncr, orientLine, direction, uNum, vNum
+    Dim srf, tempSrf
+    orientLine = Array(arrBasePt, arrEndPt)
+
+    '************* VARIABLES ***************
+    '** (You might want to change these) ***
+	uNum = 55                            '**
+	vNum = 65                            '**
+	maxFrames = 300                       '**
+    rotateIncr = 2                       '**
+    '***************************************
+   
+    For frame = 0 To maxFrames
+    
+            Rhino.Enableredraw False
+            Rhino.UnselectAllObjects
+            
+            ' Loft the curves
+            If IsArray(arrCurves) And UBound(arrCurves) > 0 Then
+              tempSrf = Rhino.AddLoftSrf(arrCurves)
+              srf = tempSrf(0)
+            End If
+            
+            ' Add the objects
+            Call ArraySurface(srf, strObjID, orientLine, uNum, vNum)
+            
+            ' Delete the lofted surface
+            Rhino.DeleteObject srf
+             
+            ' Render
+            Rhino.Enableredraw True
+            If renderFlag = True Then 
+              Call Render(frame)
+            End If
+            
+            ' Delete everything except the starting
+            Rhino.Command("_SelAll")
+            Rhino.UnselectObjects arrCurves
+            Rhino.UnselectObject strObjID
+            Rhino.Command("_Delete")
+                   
+            'rotate the curves
+            Dim curve
+            For Each curve In arrCurves
+              'Randomize the rotation direction
+              direction = RandomNumber(1,2)
+              If direction=2 Then
+                direction = -1
+              End If
+              Rhino.RotateObject curve, Rhino.CurveEndPoint (curve) , rotateIncr, Array(1,0,0)
+            Next
+      Next      
+
+
+End Function
+
+Function Render(frame)
+      ' Render the scene with the current render engine
+      Rhino.Command "_-Render"
+      ' Save the render to a jpg file
+      Rhino.Command "_-SaveRenderWindowAs " & frame & ".jpg"
+      ' Close the render window
+      Rhino.Command "_-CloseRenderWindow" 
+End Function
+
+Function RandomNumber(nMin, nMax)
+      RandomNumber = Null
+      If Not IsNumeric(nMin) Then Exit Function
+      If Not IsNumeric(nMax) Then Exit Function
+      If nMin >= nMax Then Exit Function
+      Randomize
+      RandomNumber = Int((nMax - nMin + 1) * Rnd + nMin)
+End Function
+
+' Re-adapted from Carl Lostritto's original adaption of my "array objects on surface" script\
+' NOTE: this also fixes the command so that it will array ontop of the surface rather than under
+Function ArraySurface( surface, object, guideLine, uDirection, vDirection)
+  Dim arrNormal, strNewObject, arrNormalEnd, point 
+  Dim U, V, t(1)
+  
+  Dim i,j
+    ' Get the U,V domain
+    U = Rhino.SurfaceDomain(surface, 0)
+    V = Rhino.SurfaceDomain(surface, 1)
+    
+    ' For each row in the U direction
+    For i=0 To uDirection
+      t(0) = U(0) + (((U(1) - U(0)) / uDirection) * i)
+      
+      ' For each column in the v direction
+      For j=0 To vDirection
+        t(1) = V(0) + (((V(1) - V(0)) / vDirection) * j)
+        point = Rhino.EvaluateSurface(surface, t)           ' get the point on the surface
+        arrNormal = Rhino.SurfaceNormal(surface, t)         ' get the normal vector at that point
+        arrNormal = Rhino.VectorReverse (arrNormal)         ' flip the vector to the top (weird)
+        If (IsArray(arrNormal))Then
+          arrNormalEnd = Rhino.VectorAdd(arrNormal, point)  ' translate nrmlvector to the surface pt
+          strNewObject = Rhino.OrientObject (object, guideLine, Array(point,arrNormalEnd), 1)
+        Else
+          Rhino.print("error. arrNormal not an array")
+        End If
+      Next
+    Next
+
+End Function

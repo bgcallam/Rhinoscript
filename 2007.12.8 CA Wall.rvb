@@ -1,0 +1,183 @@
+﻿Option Explicit
+'Script written by Benjamin Callam
+'Script released under the Creative Commons License
+'Script version v0.1 Saturday, December 08, 2007 9:28:56 PM
+
+Call Main()
+
+Sub Main()
+	Dim sites, time, t
+	Rhino.Enableredraw False
+	sites = Setup()
+	Call RePhase(sites)	
+	time = 250
+	For t=0 To time
+		Rhino.Enableredraw True
+		Call Render(t)
+		Rhino.Enableredraw False
+		Rhino.Command("_SelSrf ")
+		Rhino.Command("_Delete ")
+		Call EvaluateCA(sites)
+		Call RePhase(sites)	
+	Next
+
+End Sub
+
+Function Setup()
+	Dim height, width, depth, spacing
+	Dim rows(11), col(10)
+	depth = 1
+	spacing = 1	
+	
+	Rhino.UnselectAllObjects
+	Dim i, j
+	For i=0 To Ubound(rows)
+		For j=0 To Ubound(col)
+			col(j) = Rhino.Addline(Array(i*spacing,j*spacing,0),Array(i*spacing,j*spacing,depth))
+			
+			Rhino.SetObjectData col(j), "angle", "current", RandInt()
+			Rhino.SetObjectData col(j), "angle", "previous1", 0
+			Rhino.SetObjectData col(j), "angle", "previous2", 0
+		Next
+		rows(i) = col
+	Next
+	
+	' Return the grid setup
+	Setup = rows
+	
+End Function 
+
+Sub EvaluateCA(sites)
+	Dim i, j, k, l, colEval(3), rowEval(3), sitesCopy, context(3,3), arrSrf
+	sitesCopy = sites
+	For i=0 To Ubound(sites)
+		For j=0 To Ubound(sites(i))
+			Dim data : data = Rhino.GetObjectData( sites(i)(j), "angle", "current")
+			' Record object's history
+			Rhino.SetObjectData sites(i)(j), "angle", "previous2", Rhino.GetObjectData( sites(i)(j), "angle", "previous1")
+			Rhino.SetObjectData sites(i)(j), "angle", "previous1", data
+			
+			' Build Array for Autonoma Calculation
+			Dim x, y
+			For k = 0 To 2
+				For l = 0 To 2
+					' Position
+					Select Case k
+						Case 2
+							x = i +1
+						Case 1
+							x = i
+						Case 0
+							x = i -1
+					End Select
+					
+					Select Case l
+						Case 2
+							y = j +1
+						Case 1
+							y = i
+						Case 0
+							y = j -1
+					End Select
+
+					
+					' Catch boundry condition + wrap CA around edges
+					If x < 0 Then
+						x = Ubound(sites)
+					ElseIf x > Ubound(sites) Then
+						x = 0
+					End If
+						
+					If y < 0 Then 
+						y = Ubound(sites(i))
+					ElseIf y > Ubound(sites(i)) Then
+						y = 0
+					End If
+					
+					'RHino.Print x & ","& y
+					' Add the value to the context array from the copy
+					'colEval(l)
+					context(l,k)= Rhino.GetObjectData( sitesCopy(x)(y), "angle", "current")
+					
+				Next
+				
+				'rowEval(k) = colEval
+			Next
+			Rhino.Print ContextEvaluate(context)
+			Rhino.SetObjectData sites(i)(j), "angle", "current", ContextEvaluate(context)
+		Next
+		Rhino.AddLoftSrf sites(i)
+	Next
+
+End Sub
+
+Function ContextEvaluate(context)
+	Dim i, j, angleSum
+	angleSum = 0
+	
+	For i=0 To 2
+		For j=0 To 2
+			If Not j=1 And i=1 Then
+				angleSum = angleSum + context(i,j)
+			End If
+		Next
+	Next
+	If angleSum >= 360 Then
+		ContextEvaluate = 90
+	Else
+		ContextEvaluate = 360-angleSum
+	End If
+	
+End Function
+
+Function ContextEvaluateANGLE(context)
+	Dim i, j, angleSum
+	angleSum = 0
+	
+	For i=0 To 2
+		For j=0 To 2
+			If Not j=1 And i=1 Then
+				angleSum = angleSum + context(i,j)
+			End If
+		Next
+	Next
+	If angleSum >= 360 Then
+		ContextEvaluate = 0
+	Else
+		ContextEvaluate = 360-angleSum
+	End If
+	
+End Function
+
+Sub RePhase(sites)
+	Dim i, j
+	For i=0 To Ubound(sites)
+		For j=0 To Ubound(sites(i))
+			Dim row : row = sites(i)
+			Dim cntr : cntr = Rhino.DivideCurve (row(j), 2)
+			Dim rotateAxis : rotateAxis = cntr(1)
+			rotateAxis(1) = rotateAxis(1)+1
+			Dim angle : angle = Rhino.GetObjectData( row(j), "angle", "current")
+			Rhino.SelectObject row(j)
+			Rhino.Command("_Rotate3D " & Pt2Str(cntr(1)) & " " & Pt2Str(rotateAxis) & " "& angle & " _Enter")  
+			rhino.UnselectObject row(j)
+		Next
+	Next
+End Sub
+
+Function RandInt()
+	
+	Dim max,min
+	max=360
+	min=1
+	RandInt = Int((max-min+1)*Rnd+min)
+End Function
+
+Function Render(frame)
+	' Render the scene with the current render engine
+	Rhino.Command "_-Render"
+	' Save the render to a jpg file
+	Rhino.Command "_-SaveRenderWindowAs " & frame & ".jpg"
+	' Close the render window
+	Rhino.Command "_-CloseRenderWindow" 
+End Function

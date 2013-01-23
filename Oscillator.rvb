@@ -1,0 +1,59 @@
+﻿Option Explicit
+
+Call Oscillator()
+ 
+Sub Oscillator()
+    Dim strObject, origin, frameCount, threshold
+    threshold = 3
+    frameCount = 40
+    origin = Array(0,0,0)
+
+    ' Get the surface object
+    Dim arrObjects : arrObjects = Rhino.GetObjects("Select Objects", 0, vbTrue)
+    If IsNull(arrObjects) Then Exit Sub
+
+   
+    For Each strObject In arrObjects
+      Rhino.SetObjectData strObject, "Length", "X", Rhino.Pt2Str(origin)
+    Next
+    
+    Dim i
+    For i=0 To frameCount
+      Call Rhino.EnableRedraw (vbFalse)
+      For Each strObject In arrObjects
+        Dim arrLocation, distance, newCoord
+        arrLocation = Rhino.Str2Pt(Rhino.GetObjectData( strObject, "Length", "X"))
+        distance = RandomNumber(threshold-1)*Direction()
+        Rhino.Print distance
+        ' X Coord
+        If arrLocation(1) < threshold And arrLocation(1) > threshold*-1 Then
+          newCoord = Array(arrLocation(0),distance,arrLocation(2))
+          Call Rhino.MoveObject (strObject, arrLocation, newCoord)
+          Rhino.SetObjectData strObject, "Length", "X", Rhino.Pt2Str(newCoord)
+        End If
+      Next
+      Call Rhino.EnableRedraw (vbTrue)
+      Call RenderFrame(i)
+    Next
+End Sub 
+    
+Function RandomNumber(intHighestNumber)
+	Randomize
+	RandomNumber = Int(intHighestNumber * Rnd) + 1
+End Function
+
+Function Direction()
+  Dim dir
+  Randomize
+  dir = Int(2 * Rnd)+1
+  If dir = 2 Then
+    dir = -1
+  End If
+  Direction = dir
+End Function
+
+Sub RenderFrame(intFrameCounter)
+  Rhino.Command("render")
+  'Call Rhino.sleep(3000)
+  Call Rhino.Command("_-SaveRenderWindowAs"&" m" & "_" & CStr(intFrameCounter)& ".jpg")
+End Sub

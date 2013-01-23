@@ -1,0 +1,165 @@
+Option Explicit
+
+Sub Main()
+    Dim strCircleinput
+    Dim dblRadius(2)
+    Dim k, kk, checkloop, marker, divmarker
+    Dim lngcirclenumber
+    Dim arrradius()
+    Dim arrpoint()
+    Dim arrobjectid()
+    Dim lngcurrentcentre
+    Dim dblrotangle
+    Dim dblcosangle
+    Dim dblA, dblB, dblC
+    Dim arrscalefactor(2)
+    Dim strlastobject
+    Dim arrintersect
+    Dim checkdistanceA, checkdistanceB
+    Dim colourloop
+
+strCircleinput = Rhino.GetObjects("Select 3 circles")
+lngcirclenumber  = Rhino.Getinteger("How many circles", 100)
+
+    ReDim arrradius(lngcirclenumber)
+    ReDim arrpoint(lngcirclenumber)
+    ReDim arrobjectid(lngcirclenumber)
+
+    'Rhino.EnableRedraw (False)
+
+'define the 3 possible radii
+For k = 0 To 2
+    If Rhino.IsCircle(strCircleinput(k)) Then
+       dblRadius(k) = Rhino.circleRadius(strCircleinput(k))
+    End If
+Next
+
+'draw first circle
+arrradius(1) = dblradius(Int(Rnd*3))
+arrpoint(1) = Rhino.GetPoint("Centre of circle")
+If IsArray(arrpoint(1)) Then
+arrobjectid(1) = Rhino.AddCircle (arrpoint(1), arrradius(1))
+End If
+
+'draw second circle
+arrradius(2) = dblradius(Int(Rnd*3))
+arrpoint(2) = arrpoint(1)
+arrpoint(2)(0) = arrpoint(2)(0) + arrradius(1) + arrradius(2)
+arrobjectid(2) = Rhino.AddCircle (arrpoint(2), arrradius(2))
+
+For colourloop = 1 To 2
+If arrradius(colourloop) = dblradius(0) Then
+   Rhino.ObjectColor arrobjectid(colourloop), RGB(0,0,255)
+Else
+    If arrradius(colourloop) = dblradius(1) Then
+     Rhino.ObjectColor arrobjectid(colourloop), RGB(0,255,0)
+    Else
+        If arrradius(colourloop) = dblradius(2) Then
+        Rhino.objectcolor arrobjectid(colourloop), RGB(255,0,0)
+        End If
+    End If
+End If
+Next
+
+lngcurrentcentre = 1
+
+'draw other circles
+For kk = 3 To lngcirclenumber
+Rhino.print kk & "/" & lngcirclenumber & " circles done"
+arrradius(kk) = dblradius(Int(Rnd*3))
+
+Do
+
+marker = 0
+divmarker = 0
+
+'calculate lengths of sides
+dblA = Rhino.distance(arrpoint(lngcurrentcentre), arrpoint(kk-1))
+dblB = arrradius(lngcurrentcentre) + arrradius(kk)
+dblC = arrradius(kk) + arrradius(kk-1)
+
+'calculate angle
+dblcosangle = (dblA^2 + dblB^2 - dblC^2) / (2 * dblA * dblB)
+
+      If dblcosangle > 1 Then
+         divmarker = 1
+         Exit Do
+     End If
+
+dblrotangle = Atn(-dblcosangle / Sqr((-dblcosangle * dblcosangle) + 1)) + (2 * Atn(1))
+dblrotangle = dblrotangle * 180 / 3.141592654
+
+'work out scale
+arrscalefactor(0) = dblB / dblA
+arrscalefactor(1) = dblB / dblA
+arrscalefactor(2) = 1
+
+'add point, rotate it and scale it
+strlastobject = Rhino.addpoint (arrpoint(kk-1))
+Rhino.rotateobject strlastobject, arrpoint(lngcurrentcentre), dblrotangle
+Rhino.scaleobject strlastobject, arrpoint(lngcurrentcentre), arrscalefactor
+arrpoint(kk) = Rhino.PointCoordinates (strlastobject)
+
+'delete point and place circle
+Rhino.deleteobject (strlastobject)
+arrobjectid(kk) = Rhino.addcircle (arrpoint(kk), arrradius(kk))
+
+'colour the circles
+If arrradius(kk) = dblradius(0) Then
+   Rhino.ObjectColor arrobjectid(kk), RGB(0,0,255)
+Else
+    If arrradius(kk) = dblradius(1) Then
+     Rhino.ObjectColor arrobjectid(kk), RGB(0,255,0)
+    Else
+        If arrradius(kk) = dblradius(2) Then
+        Rhino.objectcolor arrobjectid(kk), RGB(255,0,0)
+        End If
+    End If
+End If
+
+'CHECK IF CIRCLE IS RIGHT THEN DELETE IT IF IT ISN'T
+For checkloop = (kk-1) To 1 Step -1
+checkdistanceA = Rhino.distance(arrpoint(kk), arrpoint(checkloop)) + 0.001
+checkdistanceB = (arrradius(kk) + arrradius(checkloop))
+If checkdistanceA < checkdistanceB Then
+   Rhino.deleteobject (arrobjectid(kk))
+   lngcurrentcentre = lngcurrentcentre + 1
+   marker = 1
+   
+   'check for intersections with previous 2 circles
+   If checkloop = (kk-2) Then
+      marker = 2
+   End If
+   If checkloop = (kk-3) Then
+      marker = 2
+   End If
+   Exit For
+End If
+Next
+
+If marker = 0 Then
+   Exit Do
+Else
+    If marker = 2 Then
+    kk = kk - 1
+    lngcurrentcentre = lngcurrentcentre - 1
+    Exit Do
+    End If
+End If
+
+Loop
+
+If divmarker = 1 Then
+   kk = kk - 1
+End If
+
+Next
+
+'colour the circles
+'for colourloop = 1 to lngcirclenumber
+'next
+
+Rhino.EnableRedraw (True)
+
+End Sub
+Main

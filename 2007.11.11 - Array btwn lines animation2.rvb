@@ -1,0 +1,132 @@
+'Author: Ben Callam
+'Date: 11/2/2007
+'Liscense: Creative Commons
+
+Option Explicit
+
+Call ArrayBTWPts(True)
+
+' Argument determines whether the obeject is resized in 3 dimensions or 1
+'   true -> resize 3d
+'   false -> resize 1d
+Function ArrayBTWPts(resize)
+  
+    If Not resize = True And Not resize = False Then
+      Rhino.Print "This function takes a boolean parameter"
+      Exit Function
+    End If
+    
+    Rhino.UnselectAllObjects
+ 
+    Dim strCurve1 
+    strCurve1 = Rhino.GetObject("Select the First Curve", 4, False, False) 
+    If IsNull(strCurve1) Then Exit Function 
+    
+    'Rhino.UnselectAllObjects
+    
+    Dim strCurve2 
+    strCurve2 = Rhino.GetObject("Select the Second Curve", 4, False, False) 
+    If IsNull(strCurve2) Then Exit Function 
+    
+    ' Select object to array
+    Dim strObjID  
+    strObjID = Rhino.GetObject("Select an Object", 4+8+16, False, False) 
+    If IsNull(strObjID) Then Exit Function
+    
+    ' Select Point 1
+    Dim arrBasePt  
+    arrBasePt = Rhino.GetPoint("Pick a point to attach to Curve 1") 
+    If IsNull(arrBasePt) Then Exit Function
+    
+    ' Select Point 2
+    Dim arrEndPt  
+    arrEndPt = Rhino.GetPoint("Pick a point to attach to Curve 2") 
+    If IsNull(arrEndPt) Then Exit Function
+      
+    ' Get the number to array
+    Dim intObjNum : intObjNum = Rhino.GetInteger("Number of objects to array", 2, 2)
+    If IsNull(intObjNum) Then Exit Function
+    
+
+ 
+'### BEGIN MODIFICATION ###   
+
+    Dim frame, scale, scaleUp, scaleDown, x, y, z, min, max, centerPt
+    'scaleUp = 1.05
+    'scaleDown = 0.95
+    scale = 2
+    min = 1
+    max = 2
+    
+    For frame = 0 To 90
+    
+             Dim arrPoints1 : arrPoints1 = Rhino.DivideCurve(strCurve1, intObjNum)
+             Dim arrPoints2 : arrPoints2 = Rhino.DivideCurve(strCurve2, intObjNum)
+    
+            Rhino.Enableredraw False
+            
+            Dim i, strCopy
+            If IsArray(arrPoints1) And IsArray(arrPoints2) Then
+              If resize = False Then
+                For i=0 To UBound(arrPoints1)
+                  '***Scale1D, copy, then orient w/o copy**
+                  strCopy = Rhino.CopyObject( strObjID)
+                  Rhino.SelectObject strCopy
+                  Rhino.Command("_Scale1D " & Pt2Str(arrBasePt) & " " & Pt2Str(arrEndPt) & " "& Rhino.Distance(arrPoints1(i),arrPoints2(i)) & " _Enter")
+                  Rhino.OrientObject strCopy, Array(arrBasePt, arrEndPt), Array(arrPoints1(i), arrPoints2(i))
+                  Rhino.UnselectAllObjects
+                Next
+                strObjID = strCopy
+              Else
+                For i=0 To UBound(arrPoints1)
+                  '***Scale3D **
+                  Rhino.OrientObject strObjID, Array(arrBasePt, arrEndPt), Array(arrPoints1(i), arrPoints2(i)), 1+2
+                  Rhino.UnselectAllObjects
+                Next
+              End If
+              
+            Rhino.Enableredraw True
+            Call Render(frame)
+            Rhino.Command("_SelAll")
+            Rhino.UnselectObjects Array(strObjID,strCurve1,strCurve2)
+            Rhino.Command("_Delete")
+            
+            'centerPt = Rhino.CircleCenterPoint(strCurve2)
+            centerPt = Rhino.CurveEndPoint (strCurve2)
+            'If Rhino.CircleRadius(strCurve2) > Rhino.CircleRadius(strCurve1)*4 Then
+            '  scale = scaleDown
+            'End If
+            'If Rhino.CircleRadius(strCurve2) < Rhino.CircleRadius(strCurve1) Then
+            '  scale = scaleUp
+            'End If
+            'Rhino.ScaleObject strCurve2, centerPt, Array(scale,scale,scale)
+            
+            x = RandomNumber(min,max)
+            y = RandomNumber(min,max)
+            z = RandomNumber(min,max)
+            Rhino.RotateObject strCurve2, centerPt , 5, Array(1,0,0)
+            Rhino.MoveObject strCurve2, centerPt, Array(0,centerPt(1)+scale,0)
+        Else
+          Rhino.Print "Something went wrong"
+        End If
+      Next      
+'### END MODIFICATION ###
+End Function
+
+Function Render(frame)
+      ' Render the scene with the current render engine
+      Rhino.Command "_-Render"
+      ' Save the render to a jpg file
+      Rhino.Command "_-SaveRenderWindowAs " & frame & ".jpg"
+      ' Close the render window
+      Rhino.Command "_-CloseRenderWindow" 
+End Function
+
+Function RandomNumber(nMin, nMax)
+      RandomNumber = Null
+      If Not IsNumeric(nMin) Then Exit Function
+      If Not IsNumeric(nMax) Then Exit Function
+      If nMin >= nMax Then Exit Function
+      Randomize
+      RandomNumber = Int((nMax - nMin + 1) * Rnd + nMin)
+End Function

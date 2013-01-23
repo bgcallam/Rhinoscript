@@ -1,0 +1,180 @@
+﻿Option Explicit
+'Script written by Benjamin Callam
+'Script released under the Creative Commons License
+'Script version v0.1 Saturday, December 08, 2007 9:28:56 PM
+
+Call Main()
+
+Sub Main()
+	Dim sites, Time, t
+  Rhino.Enableredraw False
+	sites = Setup()
+	Call RePhase(sites)	
+	Time =150
+	For t=0 To Time
+	  Rhino.Enableredraw True
+		Call Render(t)
+		Rhino.Enableredraw False
+		Rhino.Command("_SelSrf ")
+		Rhino.Command("_Delete ")
+		Call EvaluateCA(sites)
+		Call RePhase(sites)	
+	Next
+Rhino.Enableredraw True
+End Sub
+
+Function Setup()
+	Dim height, width, depth, Xspacing, Yspacing
+	Dim rows(30), col(6)
+	depth = .33
+	Xspacing = .33	
+	Yspacing = 1.5
+	
+	Rhino.UnselectAllObjects
+	Dim i, j, pt1, pt2, angle 
+	For i=0 To UBound(rows)
+		For j=0 To UBound(col)
+			pt1 = Array(i*Xspacing,j*Yspacing,0)
+			pt2 = Array(i*Xspacing,j*Yspacing,depth)
+			col(j) = Rhino.Addline(pt1,pt2)
+			angle = RandAngle()
+			'Sleep(2000) 
+			Rhino.print "angle " & angle
+			Rhino.SetObjectData col(j), "position", "pt1", Rhino.Pt2Str(pt1)
+			Rhino.SetObjectData col(j), "position", "pt2", Rhino.Pt2Str(pt2)
+			Rhino.SetObjectData col(j), "angle", "current", angle
+			Rhino.SetObjectData col(j), "angle", "previous1", 0
+			Rhino.SetObjectData col(j), "angle", "previous2", 0
+		Next
+		rows(i) = col
+	Next
+	
+	' Return the grid setup
+	Setup = rows
+	
+End Function 
+
+Sub EvaluateCA(sites)
+	Dim i, j, k, l, colEval(3), rowEval(3), sitesCopy, context(3,3), arrSrf
+	sitesCopy = sites
+	For i=0 To UBound(sites)
+		For j=0 To UBound(sites(i))
+			Dim data : data = Rhino.GetObjectData( sites(i)(j), "angle", "current")
+			' Record object's history
+			Rhino.SetObjectData sites(i)(j), "angle", "previous2", Rhino.GetObjectData( sites(i)(j), "angle", "previous1")
+			Rhino.SetObjectData sites(i)(j), "angle", "previous1", data
+			
+    			' ** Build Array for Autonoma Calculation
+    			Dim x, y
+    			For k = 0 To 2
+    				For l = 0 To 2
+    					' Position
+    					Select Case k
+    						Case 2
+    							x = i +1
+    						Case 1
+    							x = i
+    						Case 0
+    							x = i -1
+    					End Select
+    					
+    					Select Case l
+    						Case 2
+    							y = j +1
+    						Case 1
+    							y = i
+    						Case 0
+    							y = j -1
+    					End Select
+    
+    					
+    					' Catch boundry condition + wrap CA around edges
+    					If x < 0 Then
+    						x = UBound(sites)
+    					ElseIf x > UBound(sites) Then
+    						x = 0
+    					End If
+    						
+    					If y < 0 Then 
+    						y = UBound(sites(i))
+    					ElseIf y > UBound(sites(i)) Then
+    						y = 0
+    					End If
+    					
+    					context(l,k)= Rhino.GetObjectData( sitesCopy(x)(y), "angle", "current")
+    					
+    				Next
+    				
+    			Next ' ** End Context building for loops
+    	' Update entity's angle
+			Rhino.SetObjectData sites(i)(j), "angle", "current", ContextEvaluate(context)
+		Next
+		Rhino.AddLoftSrf sites(i),,,3
+	Next
+
+End Sub
+
+Function ContextEvaluate(context)
+	Dim i, j, angleSum
+	angleSum = 0
+	
+	For i=0 To 2
+		For j=0 To 2
+			If Not j=1 And i=1 Then
+				angleSum = angleSum + context(i,j)
+				'Rhino.print "at " & i & "," & j & "- " & context(i,j)
+				'sleep(2000)
+			End If
+		Next
+	Next
+	If (angleSum / 90) > 4  Then
+		ContextEvaluate = context(i,j)*-1
+	Else
+		ContextEvaluate = angleSum Mod 90
+	End If
+	
+End Function
+
+ 
+Sub RePhase(sites)
+	Dim i, j, prevPt1, prevPt2
+	For i=0 To UBound(sites)
+		For j=0 To UBound(sites(i))
+			Dim row : row = sites(i)
+			Dim cntr : cntr = Rhino.CurveMidPoint (row(j))
+			Dim rotateAxis : rotateAxis = cntr
+			rotateAxis(1) = rotateAxis(1)+1
+			Dim angle : angle = Rhino.GetObjectData( row(j), "angle", "current")
+			Dim prevAngle : prevAngle = Rhino.GetObjectData( row(j), "angle", "previous1")
+			'prevPt1 = Rhino.Str2Pt(Rhino.GetObjectData( row(j), "position", "pt1"))
+			'prevPt2 = Rhino.Str2Pt(Rhino.GetObjectData( row(j), "position", "pt2"))
+			'Rhino.OrientObject row(j), Array(Rhino.CurveStartPoint(row(j)), Rhino.CurveEndPoint(row(j))), Array(prevPt1, prevPt2)
+			Rhino.SelectObject row(j)
+			' Reset the angle to 0
+			'Rhino.Command("_Rotate3D " & Pt2Str(cntr) & " " & Pt2Str(rotateAxis) & " "& prevAngle*-1 & " _Enter")
+			'Rhino.Print "prevangle"
+			'Sleep(1000)
+			' Rotate to the new angle
+			Rhino.Command("_Rotate3D " & Pt2Str(cntr) & " " & Pt2Str(rotateAxis) & " "& angle & " _Enter")
+			 
+			Rhino.UnselectObject row(j)
+		Next
+	Next
+End Sub
+
+' Randomizes and angle between -90 and 90
+Function RandAngle()
+	Dim max,min
+	max=180
+	min=1
+	RandAngle = Int((max-min+1)*Rnd+min)-90
+End Function
+
+Function Render(frame)
+	' Render the scene with the current render engine
+	Rhino.Command "_-Render"
+	' Save the render to a jpg file
+	Rhino.Command "_-SaveRenderWindowAs " & frame & ".jpg"
+	' Close the render window
+	Rhino.Command "_-CloseRenderWindow" 
+End Function

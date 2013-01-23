@@ -1,0 +1,23 @@
+Dim strObject, arrDomainU, arrDomainV, arrParam(1), arrPoint
+
+strObject = Rhino.GetObject("Select a surface")
+
+If Rhino.IsSurface(strObject) Then
+
+arrDomainU = Rhino.SurfaceDomain(strObject, 0)
+
+arrDomainV = Rhino.SurfaceDomain(strObject, 1)
+
+arrParam(0) = arrDomainU(1)/2
+
+arrParam(1) = arrDomainV(1)/2
+Rhino
+
+arrPoint = Rhino.EvaluateSurface(strObject, arrParam)
+
+Rhino.AddPoint arrPoint
+
+End If
+
+
+

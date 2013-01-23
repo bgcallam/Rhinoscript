@@ -1,0 +1,122 @@
+  Option Explicit
+
+ Call ArrayObjectOnSurface()
+ 
+  Sub ArrayObjectOnSurface()
+
+
+    ' Get the surface object
+    Dim srf : srf = Rhino.GetObject("Select surface", 8, vbTrue)
+    If IsNull(srf) Then Exit Sub
+
+
+    ' Get the number of rows
+    Dim rows : rows = Rhino.GetInteger("Number of rows", 2, 2)
+    If IsNull(rows) Then Exit Sub
+    rows = rows - 1
+
+
+    ' Get the number of columns
+    Dim cols : cols = Rhino.GetInteger("Number of columns", 2, 2)
+    If IsNull(cols) Then Exit Sub
+    cols = cols - 1
+    
+    Rhino.UnselectAllObjects
+
+    ' Select object to array
+    Dim strObjID  
+    strObjID = Rhino.GetObject("Select an Object", 4+8+16, True, True) 
+    If IsNull(strObjID) Then Exit Sub
+
+    ' Select Normal Base point
+    Dim arrBasePt  
+    arrBasePt = Rhino.GetPoint("Pick a base point for the Object") 
+    If IsNull(arrBasePt) Then Exit Sub
+    
+    ' Select Normal End point
+    Dim arrEndPt  
+    arrEndPt = Rhino.GetPoint("Pick a point to define the object's orientation") 
+    If IsNull(arrEndPt) Then Exit Sub
+    
+    'arrObjVector = Rhino.VectorUnitize(arrObjVector)  
+    
+    ' Get the domain of the surface
+    Dim U : U = Rhino.SurfaceDomain(srf, 0)
+    Dim V : V = Rhino.SurfaceDomain(srf, 1)
+    If Not IsArray(U) Or Not IsArray(V) Then Exit Sub
+
+    ' Turn off redrawing (faster)
+    Rhino.EnableRedraw vbFalse
+
+    ' Add the objects
+    Dim i, j, t(1), pt, arrNormal, arrNormalEnd, obj
+    For i = 0 To rows
+      t(0) = U(0) + (((U(1) - U(0)) / rows) * i)
+      For j = 0 To cols
+        t(1) = V(0) + (((V(1) - V(0)) / cols) * j)
+        pt = Rhino.EvaluateSurface(srf, t)
+        If IsArray(pt) Then 
+          Dim crossProduct, arrObjVector, strNewObject', arrAngle, objEnd
+          
+          ' Get the Normal Vector
+          arrNormal = Rhino.SurfaceNormal(srf, t)
+          'Call Rhino.AddLine(Array(0,0,0), arrNormal)
+          'Call Rhino.AddTextDot ("0", arrNormal)
+          
+          ' Create a Vector from the pts given and unitize (maybe not necessary)
+          ' ***** SHIT don't need any of this?!?
+          'arrObjVector = Rhino.VectorSubtract(arrEndPt, arrBasePt)
+          'arrObjVector = Rhino.VectorCreate(arrEndPt,arrBasePt)
+          'arrObjVector = Rhino.VectorUnitize(arrObjVector)
+          
+          ' **** Definitely don't ned this!
+          'Call Rhino.AddLine(Array(0,0,0), arrObjVector)
+          'Call Rhino.AddTextDot ("arrObjVector", arrObjVector)
+          'crossProduct = Rhino.VectorCrossProduct(arrObjVector, arrNormal)
+          'Call Rhino.AddLine(Array(0,0,0), crossProduct)
+          'Call Rhino.AddTextDot ("crossProduct", crossProduct)         
+          'arrAngle = Rhino.Angle2(Array(Array(0,0,0), arrObjVector), Array(Array(0,0,0), arrNormal))
+          
+          ' Add our pt on the surface (t) to the Normal vector (move it)
+          arrNormalEnd = Rhino.VectorAdd(arrNormal, pt)
+
+          ' Copy the object
+          'strNewObject = Rhino.CopyObject (strObjID, arrBasePt, Array(0,0,0))
+          
+          strNewObject = Rhino.OrientObject (strObjID, Array(arrBasePt, arrEndPt), Array(pt,arrNormalEnd), 1)
+          
+          'need a test to see which angle to use
+          ' *** NO, you don't need this test.
+          'Call Rhino.RotateObject(strNewObject, Array(0,0,0), arrAngle(0), crossProduct)
+          'Call Rhino.MoveObject(strNewObject, Array(0,0,0), pt)  
+          
+          'If IsNull(strObjID) Then Exit Sub
+
+          'arrObjVector = Rhino.VectorAdd(arrObjVector, pt)
+  
+
+          
+          'Call Rhino.AddLine(pt, arrObjVector)
+          'Call Rhino.AddTextDot ("arrObjVector", arrObjVector)
+          'Call Rhino.AddLine(pt, arrNormalEnd)
+
+          'Call Rhino.AddLine(pt, crossProduct)
+          'Call Rhino.AddTextDot ("crossProduct", crossProduct)
+          'arrAngle = Rhino.Angle2(Array(pt, arrObjVector), Array(pt, arrNormal))
+          'Rhino.Print "Angle: " & CStr(arrAngle(0))
+          'Rhino.Print "Angle: " & CStr(arrAngle(1))
+          'Call Rhino.RotateObject(strNewObject, pt, arrAngle(0), crossProduct)
+          'obj = Rhino.AddPoint(pt) ' add the point
+          
+        End If
+      Next
+    Next
+
+
+    ' Turn on redrawing
+    Rhino.EnableRedraw vbTrue
+
+
+  End Sub
+
+

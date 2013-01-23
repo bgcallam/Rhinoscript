@@ -1,0 +1,44 @@
+Option Explicit
+
+Call ReplacePointswithObjects()
+
+' Replaces points with Objects
+Sub ReplacePointswithObjects
+
+  ' Select points to replace with a block
+  Dim arrObjects
+  arrObjects = Rhino.GetObjects("Select points to replace", 1, True, True)
+  If Not IsArray(arrObjects) Then Exit Sub
+
+  ' Select object to array
+  Dim strObjID  
+  strObjID = Rhino.GetObject("Select an Object", 4+8+16, True, True) 
+  If IsNull(strObjID) Then Exit Sub
+
+  ' Select Base point
+  Dim arrBasePt  
+  arrBasePt = Rhino.GetPoint("Pick a base point for the Object") 
+  If IsNull(arrBasePt) Then Exit Sub
+    
+  ' Turn off redrawing (faster)
+  Rhino.EnableRedraw False      
+
+  ' Process each selected point object
+  Dim strObject, arrPoint
+  For Each strObject In arrObjects
+    ' Get the point object's coordinates
+    arrPoint = Rhino.PointCoordinates(strObject)
+    ' Insert the block at that location
+    Rhino.CopyObject strObjID, arrBasePt, arrPoint
+  Next
+
+
+  ' Delete all of the point objects
+  'Rhino.DeleteObjects arrObjects   
+
+
+  ' Turn redrawing back on     
+  Rhino.EnableRedraw True      
+
+
+End Sub    

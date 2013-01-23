@@ -1,0 +1,84 @@
+﻿  Option Explicit
+
+ Call ArrayObjectOnSurface()
+ 
+Sub ArrayObjectOnSurface()
+
+
+	' Get the surface object
+	Dim srf : srf = Rhino.GetObject("Select the 1st surface", 8, vbTrue)
+	If IsNull(srf) Then Exit Sub
+
+	' Get the surface object
+	Dim srf2 : srf2 = Rhino.GetObject("Select another surface", 8, vbTrue)
+	If IsNull(srf) Then Exit Sub
+
+	' Get the number of rows
+	Dim rows : rows = Rhino.GetInteger("Number of rows", 30, 2)
+	If IsNull(rows) Then Exit Sub
+	rows = rows - 1
+
+
+	' Get the number of columns
+	Dim cols : cols = Rhino.GetInteger("Number of columns", 20, 2)
+	If IsNull(cols) Then Exit Sub
+	cols = cols - 1
+	
+	Dim stripL : stripL = Rhino.GetReal("Strip depth (inches)", 4)
+	If IsNull(stripL) Then Exit Sub
+    
+	Rhino.UnselectAllObjects
+    
+	' Get the domain of the surface
+	Dim U : U = Rhino.SurfaceDomain(srf, 0)
+	Dim V : V = Rhino.SurfaceDomain(srf, 1)
+	If Not IsArray(U) Or Not IsArray(V) Then Exit Sub
+	
+	' Get the domain of the surface2
+	Dim U2 : U2 = Rhino.SurfaceDomain(srf2, 0)
+	Dim V2 : V2 = Rhino.SurfaceDomain(srf2, 1)
+	If Not IsArray(U2) Or Not IsArray(V2) Then Exit Sub
+
+	' Turn off redrawing (faster)
+	Rhino.EnableRedraw vbFalse
+
+	' Add the objects
+	
+	Dim i, j, t(1), t2(1), pt, pt2, line, arrLoft()
+	Const rhUnitInches = 8
+	Dim intSystem
+
+	' Switch the model units to inches temporarily *** BROKEN? ***
+	'intSystem = Rhino.UnitSystem 
+	'Rhino.UnitSystem rhUnitInches,False
+
+	
+	For i = 0 To rows
+		t(0) = U(0) + (((U(1) - U(0)) / rows) * i)
+		t2(0) = U2(0) + (((U2(1) - U2(0)) / rows) * i)
+		ReDim arrLoft(cols)
+		For j = 0 To cols
+			
+			t(1) = V(0) + (((V(1) - V(0)) / cols) * j)
+			t2(1) = V2(0) + (((V2(1) - V2(0)) / cols) * j)
+			pt = Rhino.EvaluateSurface(srf, t)
+			pt2 = Rhino.EvaluateSurface(srf2, t2)
+			If IsArray(pt) And IsArray(pt2) Then 
+				line =	Rhino.AddLine (pt, pt2)
+				Rhino.SelectObject line
+				Rhino.Command("_Scale1D " & Pt2Str(pt) & " " & Pt2Str(pt2) & " " & stripL/12 & " _Enter")
+				Rhino.UnselectAllObjects
+				arrLoft(j) = line
+			End If
+		Next
+		Rhino.AddLoftSrf arrLoft,,,3
+	Next
+
+	' Switch the units back to whatever they were before
+	'Rhino.UnitSystem  intSystem
+
+	' Turn on redrawing
+	Rhino.EnableRedraw vbTrue
+
+
+End Sub

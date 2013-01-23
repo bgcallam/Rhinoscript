@@ -1,0 +1,54 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''
+''
+''  http://ofthiswearesure.com/rhino
+''
+''  (c) bryan boyer 2007, of this we are sure
+''  this script comes with no guarantee and
+''  barely any help. be smart, save you work,
+''  sleep regularly, tip your waiter, and
+''  clean up your own mess.
+''
+''  viewmaker adds a viewport frame to the current view
+''  and then runs make2d. this should allow you to
+''  automagically match the lines and the underlay
+''  in illustrator by making the frame and the render
+''  the same size.
+''
+''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Dim arrObjects, strView, arrSize, arrPt2d1, arrPt2d2, arrPoint1, arrPoint2, arrPoint3, arrPoint4, strFrame
+
+strView = Rhino.CurrentView
+
+arrSize = Rhino.ViewSize
+
+arrObjects = Rhino.SelectedObjects
+
+If IsArray(arrObjects) Then
+
+   If IsArray(arrSize) Then
+
+	arrPt2d1 = Array(0.0, 0.0)
+
+	arrPoint1 = Rhino.XformScreenToWorld(arrPt2d1, strView)
+
+        arrPoint3 = Rhino.XformScreenToWorld(Array(arrSize(0),0), strView)
+
+        arrPoint4 = Rhino.XformScreenToWorld(Array(0,arrSize(1)), strView)
+
+        arrPoint2 = Rhino.XformScreenToWorld(arrSize, strView)
+
+        strFrame = Rhino.AddPolyline (Array(arrPoint1, arrPoint3, arrPoint2, arrPoint4, arrPoint1))
+
+        Rhino.SelectObject strFrame
+
+        Rhino.Command ("Make2d")
+
+        Rhino.DeleteObject strFrame
+
+   End If
+Else
+    Rhino.Print "Please select the objects you would like to include in the make2d view before running Viewmaker"
+End If
