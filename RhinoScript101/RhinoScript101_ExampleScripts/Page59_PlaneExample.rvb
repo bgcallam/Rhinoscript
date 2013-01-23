@@ -1,0 +1,20 @@
+Call PlaneExample()
+Sub PlaneExample()
+    Dim ptOrigin : ptOrigin = Rhino.GetPoint("Plane origin")
+    If IsNull(ptOrigin) Then Exit Sub
+
+    Dim ptX : ptX = Rhino.GetPoint("X-axis direction", ptOrigin)
+    If IsNull(ptX) Then Exit Sub
+
+    Dim ptY : ptY = Rhino.GetPoint("Y-axis direction", ptOrigin)
+    If IsNull(ptY) Then Exit Sub
+
+    Call Rhino.AddPlaneSurface(ptOrigin, ptX, ptY)
+
+    Dim arrPlane : arrPlane = Rhino.PlaneFromPoints(ptOrigin, ptX, ptY)
+    If IsNull(arrPlane) Then Exit Sub
+    
+    Call Rhino.AddPlaneSurface(arrPlane(0), _
+    Rhino.PointAdd(arrPlane(0), arrPlane(1)), _
+    Rhino.PointAdd(arrPlane(0), arrPlane(2)))
+End Sub
